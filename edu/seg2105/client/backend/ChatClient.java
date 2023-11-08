@@ -58,8 +58,6 @@ public class ChatClient extends AbstractClient
   public void handleMessageFromServer(Object msg) 
   {
     clientUI.display(msg.toString());
-    
-    
   }
 
   /**
@@ -70,9 +68,16 @@ public class ChatClient extends AbstractClient
   public void handleMessageFromClientUI(String message)
   {
     try
+    
     {
-      sendToServer(message);
+      if (message.startsWith("#")) {
+    	  handleCommand(message);
+      }
+      else {
+    	  sendToServer(message);
+      }
     }
+      
     catch(IOException e)
     {
       clientUI.display
@@ -80,6 +85,112 @@ public class ChatClient extends AbstractClient
       quit();
     }
   }
+  
+  
+  private void handleCommand(String command) {
+	  command = command.substring(1);
+      String[] split = command.split(" ", 2);
+      String c = split[0];
+	  
+      switch (c) {
+      case "quit":
+    	  clientUI.display("Quitting program...");
+          quit();
+          break;
+          
+      case "logoff":
+    	  if (this.isConnected()) {
+    		  try {
+    			  this.closeConnection();
+    			  System.out.println("You are now logged off!");
+    		  }
+    		  catch(IOException e) {
+    			  System.out.println("An error occured!");
+    		  }
+    	  }
+          break;
+          
+      case "sethost":
+          if (split.length > 1 && !this.isConnected()) {
+        	  clientUI.display("Setting host to " + split[1]); 
+              setHost(split[1]);
+          } else {
+              clientUI.display("Error occured. Please be disconnected and input a host");
+          }
+          break;
+          
+      case "setport":
+    	if (split.length > 1 && !this.isConnected()) {
+        try {
+            int port = Integer.parseInt(split[1]);
+      	  	clientUI.display("Setting port to " + split[1]); 
+            setPort(port);
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid port number: " + split[1] + " using default port");
+            setPort(5555);
+        }
+    	} else {
+    		clientUI.display("Error occured. Please be disconnected and input a port");
+    	}
+          break;
+          
+      case "login":
+    	  if (!this.isConnected()) {
+    		  try {
+    			  this.openConnection();
+    			  System.out.println("You are now logged in!");
+    		  } 
+    		  catch (IOException e) {
+    			  System.out.println("An error occured!");
+    		  }
+    	  }
+    	  else {
+    		  clientUI.display("You cannot log in as you are already logged in");
+    	  }
+    	  
+          break;
+          
+      case "gethost":
+          clientUI.display("The current host is: " + getHost());
+          break;
+          
+      case "getport":
+          clientUI.display("The current port is: " + getPort());
+          break;
+          
+      default:
+          System.out.println("Unknown command: " + command);
+      }
+	  
+  }
+  
+  
+	/**
+	 * Hook method called each time an exception is thrown by the client's
+	 * thread that is waiting for messages from the server. The method may be
+	 * overridden by subclasses.
+	 * 
+	 * @param exception
+	 *            the exception raised.
+	 */
+  
+  @Override
+  protected void connectionException(Exception exception) {
+	  clientUI.display("The server has shut down "); 
+	  quit();
+  }
+  
+  /**
+	 * Hook method called after the connection has been closed. The default
+	 * implementation does nothing. The method may be overriden by subclasses to
+	 * perform special processing such as cleaning up and terminating, or
+	 * attempting to reconnect.
+	 */
+  
+  @Override
+  protected void connectionClosed() {
+	  clientUI.display("Connection closed");
+	}
   
   /**
    * This method terminates the client.
