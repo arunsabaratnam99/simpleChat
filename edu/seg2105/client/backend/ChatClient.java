@@ -21,7 +21,9 @@ import edu.seg2105.client.common.*;
 public class ChatClient extends AbstractClient
 {
   //Instance variables **********************************************
+  String loginID; 
   
+
   /**
    * The interface type variable.  It allows the implementation of 
    * the display method in the client.
@@ -39,11 +41,14 @@ public class ChatClient extends AbstractClient
    * @param clientUI The interface type variable.
    */
   
-  public ChatClient(String host, int port, ChatIF clientUI) 
+  public ChatClient(String loginID, String host, int port, ChatIF clientUI) 
     throws IOException 
   {
     super(host, port); //Call the superclass constructor
     this.clientUI = clientUI;
+    
+    this.loginID = loginID; 
+    
     openConnection();
   }
 
@@ -113,7 +118,7 @@ public class ChatClient extends AbstractClient
       case "sethost":
           if (split.length > 1 && !this.isConnected()) {
         	  clientUI.display("Setting host to " + split[1]); 
-              setHost(split[1]);
+              this.setHost(split[1]);
           } else {
               clientUI.display("Error occured. Please be disconnected and input a host");
           }
@@ -124,7 +129,7 @@ public class ChatClient extends AbstractClient
         try {
             int port = Integer.parseInt(split[1]);
       	  	clientUI.display("Setting port to " + split[1]); 
-            setPort(port);
+            this.setPort(port);
         } catch (NumberFormatException e) {
             System.out.println("Invalid port number: " + split[1] + " using default port");
             setPort(5555);
@@ -135,20 +140,23 @@ public class ChatClient extends AbstractClient
           break;
           
       case "login":
-    	  if (!this.isConnected()) {
-    		  try {
-    			  this.openConnection();
-    			  System.out.println("You are now logged in!");
-    		  } 
-    		  catch (IOException e) {
-    			  System.out.println("An error occured!");
-    		  }
-    	  }
-    	  else {
-    		  clientUI.display("You cannot log in as you are already logged in");
-    	  }
-    	  
+          if (!this.isConnected()) {
+              try {
+                  if (split.length > 1) {
+                      this.loginID = split[1]; 
+                  }
+                  this.openConnection();
+                  clientUI.display("You are now logged in as " + loginID);
+              } 
+              catch (IOException e) {
+                  clientUI.display("An error occurred while trying to log in.");
+              }
+          }
+          else {
+              clientUI.display("You cannot log in as you are already logged in");
+          }
           break;
+          
           
       case "gethost":
           clientUI.display("The current host is: " + getHost());
@@ -179,6 +187,16 @@ public class ChatClient extends AbstractClient
 	  clientUI.display("The server has shut down "); 
 	  quit();
   }
+  
+  @Override
+  protected void connectionEstablished() {
+	  try {
+		sendToServer("#login " + loginID);
+	} catch (IOException e) {
+		System.out.println("Error occured while trying to establish connection.");
+	}
+  }
+	
   
   /**
 	 * Hook method called after the connection has been closed. The default

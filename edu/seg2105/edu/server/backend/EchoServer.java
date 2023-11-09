@@ -4,6 +4,8 @@ package edu.seg2105.edu.server.backend;
 // license found at www.lloseng.com 
 
 
+import java.io.IOException;
+
 import ocsf.server.*;
 
 /**
@@ -18,7 +20,7 @@ import ocsf.server.*;
 public class EchoServer extends AbstractServer 
 {
   //Class variables *************************************************
-  
+	boolean run = true; 
   /**
    * The default port to listen on.
    */
@@ -45,12 +47,57 @@ public class EchoServer extends AbstractServer
    * @param msg The message received from the client.
    * @param client The connection from which the message originated.
    */
-  public void handleMessageFromClient
-    (Object msg, ConnectionToClient client)
-  {
-    System.out.println("Message received: " + msg + " from " + client);
-    this.sendToAllClients(msg);
-  }
+  public void handleMessageFromClient(Object msg, ConnectionToClient client) {
+	  
+	    // Make message into string
+	    String message = msg.toString(); // Convert the message to a string
+	    
+	    if (client.getInfo("FirstMessageSent") == null) {
+	  		
+	  		if (!message.startsWith("#login")) {
+	  			System.out.println("The first message must be #login <loginID>, server is now closing");
+	  			try {
+					client.close();
+				} catch (IOException e) {
+					System.out.println("Error has occured");
+				}
+	  		}
+	  		else {
+	  			client.setInfo("FirstMessageSent", true);
+	  		}
+	  	}
+
+	    // If message starts with #login then call the loginClientMessage method
+	    if (message.startsWith("#login")) {
+	  	      loginClientMessage(message, client);
+	   
+	    } else {
+	      // Other processing for regular messages
+	      System.out.println("Message received: " + message + " from " + client.getInfo("loginID"));
+
+	      // Sending to all the clients on the same server
+	      this.sendToAllClients(client.getInfo("loginID") + " -> " + message);
+	    }
+	   
+	  }
+  
+  
+  private void loginClientMessage(String command, ConnectionToClient client) {
+
+	    // Splits (#login and clientLoginId) to different strings to set client info
+	    String[] parts = command.split(" ");
+
+
+	    // Assigns 2nd split of the string to be the clientLoginId
+	    String clientLoginId = parts[1];
+
+	    // Set the client's login ID in their connection information
+	    System.out.println("Message received: " + command + " from " + client.getInfo("loginID"));
+	    client.setInfo("loginID", clientLoginId);
+	    System.out.println(clientLoginId + " has logged on.");
+	    
+
+	  }
     
   /**
    * This method overrides the one in the superclass.  Called
@@ -80,7 +127,7 @@ public class EchoServer extends AbstractServer
   
   @Override
   protected void clientConnected(ConnectionToClient client) {
-	 String message = client + " has connected.";
+	 String message = "A new client has connected.";
 
 	 this.sendToAllClients(message);
 	 System.out.println(message);
@@ -96,25 +143,28 @@ public class EchoServer extends AbstractServer
   
   @Override
   synchronized protected void clientDisconnected(ConnectionToClient client) {
-	    String message = client + " has disconnected.";
+	 String message = client.getInfo("loginID") + " has disconnected.";
 
-	    this.sendToAllClients(message);
-	    System.out.println(message);
+    this.sendToAllClients(message);
+    System.out.println(message);
 	    
   }
   
-  public void disonnectAllActiveUsers() {
-	    Thread[] clientThreadList = getClientConnections();
+  public void quitGracefully() {
+  	stopListening();
+  
+    Thread[] clientThreadList = getClientConnections();
 
-	    for (int i=0; i<clientThreadList.length; i++)
-	    {
-	      try
-	      {
-	        ((ConnectionToClient)clientThreadList[i]).close();
-	      }
-	      catch (Exception ex) {}
-	    }
-  }
+    for (int i=0; i<clientThreadList.length; i++)
+    {
+      try
+      {
+        ((ConnectionToClient)clientThreadList[i]).close();
+      }
+      catch (Exception ex) {}
+    }
+  } 
+}
   
   //Class methods ***************************************************
   
@@ -125,31 +175,4 @@ public class EchoServer extends AbstractServer
    * @param args[0] The port number to listen on.  Defaults to 5555 
    *          if no argument is entered.
    */
-  public static void main(String[] args) 
-  {
-    int port = 0; //Port to listen on
-
-    try
-    {
-      port = Integer.parseInt(args[0]); //Get port from command line
-    }
-    catch(Throwable t)
-    {
-      port = DEFAULT_PORT; //Set port to 5555
-    }
-	
-    EchoServer sv = new EchoServer(port);
-    
-    try 
-    {
-      sv.listen(); //Start listening for connections
-    } 
-    catch (Exception ex) 
-    {
-      System.out.println("ERROR - Could not listen for clients!");
-      
-      System.out.println(ex);
-    }
-  }
-}
 //End of EchoServer class

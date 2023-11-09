@@ -14,14 +14,8 @@ public class ServerConsole implements ChatIF {
 	
 	
 	//default constructor 
-	public ServerConsole(int port) {
-		try {
-			this.echoServer = new EchoServer(port);
-		}
-		catch(Error e) {
-			System.out.println("A problem was encountered while trying to create ServerConsole!");
-			System.exit(0);
-		}
+	public ServerConsole(EchoServer e) {
+		echoServer = e; 
 		
 		fromConsole = new Scanner(System.in);
 		
@@ -42,6 +36,7 @@ public class ServerConsole implements ChatIF {
 
 	      while (true) 
 	      {
+	    	  
 	        message = fromConsole.nextLine();
 	        
 	        if (!message.isEmpty()) {
@@ -68,27 +63,29 @@ public class ServerConsole implements ChatIF {
 		command = command.substring(1);
 	    String[] split = command.split(" ", 2);
 	    String c = split[0];
-		  
+	     
 	    switch (c) {
 	      case "quit":
-	    	  display("Serving is now quitting...");
+	    	  display("SERVER MSG> Server is now quitting...");
 	    	  echoServer.sendToAllClients("SERVER MSG> Server is now quitting.");
-	    	  echoServer.stopListening();
+	    	  echoServer.quitGracefully();
 	    	  System.exit(0);
-	    	  
 	    	  break;
+	    	  
 	      case "stop":
-	    	  display("Serving is now not accepting new clients...");
+	    	  display("SERVER MSG> Serving is now not accepting new clients...");
 	    	  echoServer.sendToAllClients("SERVER MSG> Server is now not accepting new clients.");
 	          echoServer.stopListening();
 	          
 	          break; 
 	      case "close":
-	    	  display("Server will now disconnect all clients and stop listening for new ones...");
+	    	  display("SERVER MSG> Server will now disconnect all clients and stop listening for new ones...");
 	    	  echoServer.sendToAllClients("SERVER MSG> Server is now stopping and will be disconnecting all users");
-	    	  echoServer.stopListening();
-	    	  echoServer.disonnectAllActiveUsers();
-
+	    	  try {
+				echoServer.close();
+			} catch (IOException e) {
+				System.out.println("Error while closing the server!");
+			}
 	      break;
 	          
 	      case "setport":
@@ -132,7 +129,7 @@ public class ServerConsole implements ChatIF {
 	}
 	  
 	public static void main(String[] args) {
-		int port = 6969;
+		int port = 0;
 		
 	    try
 	    {
@@ -147,10 +144,13 @@ public class ServerConsole implements ChatIF {
 	    }
 	    
 	    
-	    ServerConsole server = new ServerConsole(port);
+	    EchoServer es = new EchoServer(port);
+	    ServerConsole sc = new ServerConsole(es);
+	    
 	    
 	    try{
-	    	server.accept();  //Wait for console data
+	    	sc.echoServer.listen();
+	    	sc.accept();
 	    }
 	    catch(Exception ex) {
           System.out.println("ERROR - Could not listen for clients!");
@@ -158,6 +158,7 @@ public class ServerConsole implements ChatIF {
           System.out.println(ex);
 	        
 	    }
+	    
 	  }
   
 }
